@@ -19,6 +19,7 @@ public static partial class GuardClauseExtensions
     /// <param name="message">Optional. Custom error message</param>
     /// <param name="exceptionCreator"></param>
     /// <returns><paramref name="input" /> if the value is not negative.</returns>
+    /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
     /// <exception cref="Exception"></exception>
     public static string StringTooShort(this IGuardClause guardClause,
@@ -29,6 +30,7 @@ public static partial class GuardClauseExtensions
         Func<Exception>? exceptionCreator = null)
     {
         Guard.Against.NegativeOrZero(minLength, nameof(minLength), exceptionCreator: exceptionCreator);
+        Guard.Against.Null(input, parameterName, message, exceptionCreator);
         if (input.Length < minLength)
         {
             Exception? exception = exceptionCreator?.Invoke();
@@ -48,6 +50,7 @@ public static partial class GuardClauseExtensions
     /// <param name="message">Optional. Custom error message</param>
     /// <param name="exceptionCreator"></param>
     /// <returns><paramref name="input" /> if the value is not negative.</returns>
+    /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
     /// <exception cref="Exception"></exception>
     public static string StringTooLong(this IGuardClause guardClause,
@@ -58,6 +61,7 @@ public static partial class GuardClauseExtensions
         Func<Exception>? exceptionCreator = null)
     {
         Guard.Against.NegativeOrZero(maxLength, nameof(maxLength), exceptionCreator: exceptionCreator);
+        Guard.Against.Null(input, parameterName, message, exceptionCreator);
         if (input.Length > maxLength)
         {
             Exception? exception = exceptionCreator?.Invoke();
