@@ -30,6 +30,22 @@ public class GuardAgainstStringTooShort
     }
 
     [Fact]
+    public void ThrowsGivenNullString()
+    {
+        string? nullString = null;
+        var exception = Assert.Throws<ArgumentNullException>(() => Guard.Against.StringTooShort(nullString, 2));
+        Assert.Equal("nullString", exception.ParamName);
+    }
+
+    [Fact]
+    public void ThrowsCustomExceptionWhenSuppliedGivenNullString()
+    {
+        string? nullString = null;
+        Exception customException = new Exception();
+        Assert.Throws<Exception>(() => Guard.Against.StringTooShort(nullString, 2, "string", exceptionCreator: () => customException));
+    }
+
+    [Fact]
     public void ThrowsGivenNonPositiveMinLength()
     {
         Assert.Throws<ArgumentException>(() => Guard.Against.StringTooShort("", 0, "string"));
