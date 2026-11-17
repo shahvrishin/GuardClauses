@@ -316,8 +316,8 @@ public static partial class GuardClauseExtensions
         }
     }
 
-    // The (parameterName, int, Type) constructor of InvalidEnumArgumentException needs an int, which enum values
-    // outside the Int32 range cannot provide, so those fall back to its message constructor with the same shape.
+    // InvalidEnumArgumentException's (parameterName, int, Type) constructor cannot describe enum values outside
+    // the Int32 range, so those use its message constructor with the same message shape.
     private static InvalidEnumArgumentException CreateInvalidEnumArgumentException<T>(string? parameterName, T input)
         where T : struct, Enum
     {
