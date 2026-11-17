@@ -512,27 +512,33 @@ public class GuardAgainstOutOfRangeForEnumWithNonIntBackingTypes
         var ulongException = Assert.Throws<InvalidEnumArgumentException>(
             () => Guard.Against.EnumOutOfRange((ULongEnum)5UL, "value"));
         Assert.Equal("value", ulongException.ParamName);
+
+        var uintAboveInt32Exception = Assert.ThrowsAny<InvalidEnumArgumentException>(
+            () => Guard.Against.EnumOutOfRange((UIntEnum)((uint)int.MaxValue + 1), "value"));
+        Assert.Equal("value", uintAboveInt32Exception.ParamName);
     }
 
     [Fact]
     public void ThrowsInvalidEnumArgumentExceptionGivenLongValueOutsideInt32Range()
     {
-        var exception = Assert.Throws<InvalidEnumArgumentException>(
+        var exception = Assert.ThrowsAny<InvalidEnumArgumentException>(
             () => Guard.Against.EnumOutOfRange((LongEnum)((long)int.MaxValue + 1), "parameterName"));
 
         Assert.Contains("'parameterName'", exception.Message);
         Assert.Contains("LongEnum", exception.Message);
         Assert.Contains("(Parameter 'parameterName')", exception.Message);
+        Assert.Equal("parameterName", exception.ParamName);
     }
 
     [Fact]
     public void ThrowsInvalidEnumArgumentExceptionGivenULongValueOutsideInt32Range()
     {
-        var exception = Assert.Throws<InvalidEnumArgumentException>(
+        var exception = Assert.ThrowsAny<InvalidEnumArgumentException>(
             () => Guard.Against.EnumOutOfRange((ULongEnum)((ulong)int.MaxValue + 1), "parameterName"));
 
         Assert.Contains("'parameterName'", exception.Message);
         Assert.Contains("ULongEnum", exception.Message);
         Assert.Contains("(Parameter 'parameterName')", exception.Message);
+        Assert.Equal("parameterName", exception.ParamName);
     }
 }
