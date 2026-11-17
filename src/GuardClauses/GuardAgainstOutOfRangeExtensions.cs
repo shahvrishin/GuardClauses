@@ -56,7 +56,8 @@ public static partial class GuardClauseExtensions
         string? message = null,
         Func<Exception>? exceptionCreator = null) where T : struct, Enum
     {
-        if (!Enum.IsDefined(typeof(T), input))
+        if (!TryGetUnderlyingTypeValue<T>(input, out object underlyingValue) ||
+            !Enum.IsDefined(typeof(T), underlyingValue))
         {
             var exception = exceptionCreator?.Invoke();
             if (string.IsNullOrEmpty(message))
@@ -92,12 +93,81 @@ public static partial class GuardClauseExtensions
             var exception = exceptionCreator?.Invoke();
             if (string.IsNullOrEmpty(message))
             {
-                throw exception ?? new InvalidEnumArgumentException(parameterName, Convert.ToInt32(input), typeof(T));
+                throw exception ?? CreateInvalidEnumArgumentException(parameterName, input);
             }
             throw exception ?? new InvalidEnumArgumentException(message);
         }
 
         return input;
+    }
+
+    private static bool TryGetUnderlyingTypeValue<T>(int input, out object value) where T : struct, Enum
+    {
+        switch (Type.GetTypeCode(Enum.GetUnderlyingType(typeof(T))))
+        {
+            case TypeCode.SByte when input >= sbyte.MinValue && input <= sbyte.MaxValue:
+                value = (sbyte)input;
+                return true;
+            case TypeCode.Byte when input >= byte.MinValue && input <= byte.MaxValue:
+                value = (byte)input;
+                return true;
+            case TypeCode.Int16 when input >= short.MinValue && input <= short.MaxValue:
+                value = (short)input;
+                return true;
+            case TypeCode.UInt16 when input >= ushort.MinValue && input <= ushort.MaxValue:
+                value = (ushort)input;
+                return true;
+            case TypeCode.Int32:
+                value = input;
+                return true;
+            case TypeCode.UInt32 when input >= 0:
+                value = (uint)input;
+                return true;
+            case TypeCode.Int64:
+                value = (long)input;
+                return true;
+            case TypeCode.UInt64 when input >= 0:
+                value = (ulong)input;
+                return true;
+            default:
+                value = input;
+                return false;
+        }
+    }
+
+    private static InvalidEnumArgumentException CreateInvalidEnumArgumentException<T>(string? parameterName, T input) where T : struct, Enum
+    {
+        try
+        {
+            return new InvalidEnumArgumentException(parameterName, Convert.ToInt32(input), typeof(T));
+        }
+        catch (OverflowException)
+        {
+            return new InvalidEnumValueException(parameterName, input, typeof(T));
+        }
+    }
+
+    /// <summary>
+    /// An <see cref="InvalidEnumArgumentException" /> for values the framework's int-based constructor cannot
+    /// report (a declared value outside the Int32 range of a long or ulong backed enum).
+    /// </summary>
+    private sealed class InvalidEnumValueException : InvalidEnumArgumentException
+    {
+        private readonly string? parameterName;
+
+        internal InvalidEnumValueException(string? parameterName, object invalidValue, Type enumType)
+            : base(CreateMessage(parameterName, invalidValue, enumType))
+        {
+            this.parameterName = parameterName;
+        }
+
+        public override string? ParamName => parameterName;
+
+        private static string CreateMessage(string? parameterName, object invalidValue, Type enumType)
+        {
+            var message = $"The value of argument '{parameterName}' ({invalidValue}) is invalid for Enum type '{enumType.Name}'.";
+            return parameterName is null ? message : $"{message} (Parameter '{parameterName}')";
+        }
     }
 
     /// <summary>
