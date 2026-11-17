@@ -17,6 +17,22 @@ public class GuardAgainstStringTooLong
     }
 
     [Fact]
+    public void ThrowsGivenNullString()
+    {
+        string? nullString = null;
+        var exception = Assert.Throws<ArgumentNullException>(() => Guard.Against.StringTooLong(nullString, 2));
+        Assert.Equal("nullString", exception.ParamName);
+    }
+
+    [Fact]
+    public void ThrowsCustomExceptionWhenSuppliedGivenNullString()
+    {
+        string? nullString = null;
+        Exception customException = new Exception();
+        Assert.Throws<Exception>(() => Guard.Against.StringTooLong(nullString, 2, "string", exceptionCreator: () => customException));
+    }
+
+    [Fact]
     public void ThrowsGivenNonPositiveMaxLength()
     {
         Assert.Throws<ArgumentException>(() => Guard.Against.StringTooLong("a", 0, "string"));
