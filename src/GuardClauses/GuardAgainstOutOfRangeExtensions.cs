@@ -56,7 +56,7 @@ public static partial class GuardClauseExtensions
         string? message = null,
         Func<Exception>? exceptionCreator = null) where T : struct, Enum
     {
-        if (!Enum.IsDefined(typeof(T), input))
+        if (!TryConvertToUnderlyingType(typeof(T), input, out var enumValue) || !Enum.IsDefined(typeof(T), enumValue!))
         {
             var exception = exceptionCreator?.Invoke();
             if (string.IsNullOrEmpty(message))
@@ -92,7 +92,7 @@ public static partial class GuardClauseExtensions
             var exception = exceptionCreator?.Invoke();
             if (string.IsNullOrEmpty(message))
             {
-                throw exception ?? new InvalidEnumArgumentException(parameterName, Convert.ToInt32(input), typeof(T));
+                throw exception ?? CreateInvalidEnumArgumentException(parameterName, input);
             }
             throw exception ?? new InvalidEnumArgumentException(message);
         }
@@ -297,5 +297,78 @@ public static partial class GuardClauseExtensions
         }
 
         return input;
+    }
+
+    // Enum.IsDefined(Type, object) only accepts a boxed value of the enum's exact underlying type, so an int input
+    // has to be converted for enums backed by anything but int. Values the backing type cannot represent are
+    // reported as out of range rather than being narrowed or wrapped into a declared value.
+    private static bool TryConvertToUnderlyingType(Type enumType, int value, out object? convertedValue)
+    {
+        try
+        {
+            convertedValue = Convert.ChangeType(value, Enum.GetUnderlyingType(enumType));
+            return true;
+        }
+        catch (OverflowException)
+        {
+            convertedValue = null;
+            return false;
+        }
+    }
+
+    // InvalidEnumArgumentException's (parameterName, int, Type) constructor cannot describe enum values outside
+    // the Int32 range, so those use its message constructor with the same message shape.
+    private static InvalidEnumArgumentException CreateInvalidEnumArgumentException<T>(string? parameterName, T input)
+        where T : struct, Enum
+    {
+        switch (Type.GetTypeCode(Enum.GetUnderlyingType(typeof(T))))
+        {
+            case TypeCode.SByte:
+            case TypeCode.Byte:
+            case TypeCode.Int16:
+            case TypeCode.UInt16:
+            case TypeCode.Int32:
+                return new InvalidEnumArgumentException(parameterName, Convert.ToInt32(input), typeof(T));
+            case TypeCode.UInt32:
+                var uintValue = Convert.ToUInt32(input);
+                if (uintValue <= int.MaxValue)
+                {
+                    return new InvalidEnumArgumentException(parameterName, (int)uintValue, typeof(T));
+                }
+                break;
+            case TypeCode.Int64:
+                var longValue = Convert.ToInt64(input);
+                if (longValue >= int.MinValue && longValue <= int.MaxValue)
+                {
+                    return new InvalidEnumArgumentException(parameterName, (int)longValue, typeof(T));
+                }
+                break;
+            case TypeCode.UInt64:
+                var ulongValue = Convert.ToUInt64(input);
+                if (ulongValue <= int.MaxValue)
+                {
+                    return new InvalidEnumArgumentException(parameterName, (int)ulongValue, typeof(T));
+                }
+                break;
+        }
+
+        var message = $"The value of argument '{parameterName}' ({input}) is invalid for Enum type '{typeof(T).Name}'.";
+        return parameterName is null
+            ? new InvalidEnumArgumentException(message)
+            : new InvalidEnumArgumentExceptionWithParamName($"{message} (Parameter '{parameterName}')", parameterName);
+    }
+
+    // InvalidEnumArgumentException has no constructor taking both a message and a parameter name, and its
+    // message-only constructor leaves ParamName null, so this keeps the caller's parameter name on the exception.
+    private sealed class InvalidEnumArgumentExceptionWithParamName : InvalidEnumArgumentException
+    {
+        private readonly string paramName;
+
+        public InvalidEnumArgumentExceptionWithParamName(string message, string paramName) : base(message)
+        {
+            this.paramName = paramName;
+        }
+
+        public override string? ParamName => paramName;
     }
 }
