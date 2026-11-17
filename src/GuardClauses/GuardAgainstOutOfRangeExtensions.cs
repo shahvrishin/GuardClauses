@@ -355,6 +355,20 @@ public static partial class GuardClauseExtensions
         var message = $"The value of argument '{parameterName}' ({input}) is invalid for Enum type '{typeof(T).Name}'.";
         return parameterName is null
             ? new InvalidEnumArgumentException(message)
-            : new InvalidEnumArgumentException($"{message} (Parameter '{parameterName}')");
+            : new InvalidEnumArgumentExceptionWithParamName($"{message} (Parameter '{parameterName}')", parameterName);
+    }
+
+    // InvalidEnumArgumentException has no constructor taking both a message and a parameter name, and its
+    // message-only constructor leaves ParamName null, so this keeps the caller's parameter name on the exception.
+    private sealed class InvalidEnumArgumentExceptionWithParamName : InvalidEnumArgumentException
+    {
+        private readonly string paramName;
+
+        public InvalidEnumArgumentExceptionWithParamName(string message, string paramName) : base(message)
+        {
+            this.paramName = paramName;
+        }
+
+        public override string? ParamName => paramName;
     }
 }
